@@ -1,5 +1,5 @@
-#ifndef Matrix1_HPP
-#define Matrix1_HPP
+#ifndef Multmatrix_HPP
+#define Multmatrix1_HPP
 
 #include <iostream>
 #include <fstream>
@@ -319,7 +319,7 @@ class Matrix
           return *this;
         }
 
-        Matrix<T> operator + (const Matrix<T>& right) const
+        Matrix<T>  multithreading_addition (const Matrix<T>& right) const
         {
             if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
             {
@@ -385,7 +385,7 @@ class Matrix
           }
         }
 
-        Matrix<T> operator - (const Matrix<T>& right) const
+        Matrix<T> multithreading_substraction (const Matrix<T>& right) const
         {
             if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
             {
@@ -451,7 +451,7 @@ class Matrix
           }
         }
 
-        Matrix<T> operator * (T scalar) const
+        Matrix<T> multithreading_scalar (T scalar) const
         {
               std::stack <std::thread> threads;
 
@@ -503,7 +503,7 @@ class Matrix
           return result;
         }
 
-        Matrix<T> operator * (const Matrix<T>& right) const
+        Matrix<T> multithreading_multiplication (const Matrix<T>& right) const
         {
             if (matr_cols == right.matr_rows)
             {
@@ -598,6 +598,29 @@ class Matrix
             }
             throw ("The matrice is not square!");
         }
+
+        Matrix<T> multithreading_transpose() const
+        {
+            T** res_matr = new T* [matr_cols];
+            Matrix<T> matr_transpose(matr_cols, matr_rows, res_matr);
+
+            std::stack <std::thread> threads;
+
+            for (size_t i = 0; i < matr_cols; ++i)
+            {
+                matr_transpose.matrix[i] = new T [matr_rows];
+                for (size_t j = 0; j < matr_rows; ++j)
+                    threads.emplace (std::thread ([this, &matr_transpose, i, j](){matr_transpose.matrix[i][j]=matrix[j][i];}));
+            }
+
+            for (int i = 0; i < matr_rows*matr_cols; ++i)
+            {
+              threads.top().join();
+              threads.pop();
+            }
+            return matr_transpose;
+        }
+
 
 };
 template <typename T> // ввод матрицы
