@@ -673,7 +673,6 @@ class Matrix
             return matr_transpose;
         }
 
-        //template <typename U>
         Matrix<T> multithreading_reverse ()
         {
           T det = this-> multithreading_determ();
