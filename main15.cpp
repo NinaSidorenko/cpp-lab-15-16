@@ -44,5 +44,8 @@ int main()
   Matrix <double> res9 = m1.multithreading_transpose();
   std::cout << res9;
 
+  Matrix <double> res10 = m1.multithreading_transpose(2);
+  std::cout << res10;
+
   return 0;
 }

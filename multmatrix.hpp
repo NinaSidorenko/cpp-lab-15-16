@@ -53,14 +53,14 @@ class Matrix
 
         void addition_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
-          const int n_elements = (this->matr_rows * m2.matr_cols);
-          const int n_operations = n_elements / numb_of_thr; //operations for each thread
-          const int rest_operations = n_elements % numb_of_thr; //operations, which will be given to the first thread
+          const int n_elements = (matr_rows * m2.matr_cols);
+          const int n_operations = n_elements / numb_of_thr;
+          const int rest_operations = n_elements % numb_of_thr;
 
           int start_op, end_op;
 
           if (thread_number == 0) {
-            // First thread does more job
+
             start_op = n_operations * thread_number;
             end_op = (n_operations * (thread_number + 1)) + rest_operations;
           }
@@ -82,14 +82,14 @@ class Matrix
 
         void substraction_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
-          const int n_elements = (this->matr_rows * m2.matr_cols);
-          const int n_operations = n_elements / numb_of_thr; //operations for each thread
-          const int rest_operations = n_elements % numb_of_thr; //operations, which will be given to the first thread
+          const int n_elements = (matr_rows * m2.matr_cols);
+          const int n_operations = n_elements / numb_of_thr;
+          const int rest_operations = n_elements % numb_of_thr;
 
           int start_op, end_op;
 
           if (thread_number == 0) {
-            // First thread does more job
+
             start_op = n_operations * thread_number;
             end_op = (n_operations * (thread_number + 1)) + rest_operations;
           }
@@ -111,14 +111,14 @@ class Matrix
 
         void scalar_threading(Matrix<T>& result, int thread_number, int numb_of_thr,  T right) const
         {
-          const int n_elements = (this->matr_rows * this->matr_cols);
-          const int n_operations = n_elements / numb_of_thr; //operations for each thread
-          const int rest_operations = n_elements % numb_of_thr; //operations, which will be given to the first thread
+          const int n_elements = (matr_rows * this->matr_cols);
+          const int n_operations = n_elements / numb_of_thr;
+          const int rest_operations = n_elements % numb_of_thr;
 
           int start_op, end_op;
 
           if (thread_number == 0) {
-            // First thread does more job
+
             start_op = n_operations * thread_number;
             end_op = (n_operations * (thread_number + 1)) + rest_operations;
           }
@@ -139,14 +139,14 @@ class Matrix
 
         void multiply_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
-          const int n_elements = (this->matr_rows * m2.matr_cols);
-          const int n_operations = n_elements / numb_of_thr; //operations for each thread
-          const int rest_operations = n_elements % numb_of_thr; //operations, which will be given to the first thread
+          const int n_elements = (matr_rows * m2.matr_cols);
+          const int n_operations = n_elements / numb_of_thr;
+          const int rest_operations = n_elements % numb_of_thr;
 
           int start_op, end_op;
 
           if (thread_number == 0) {
-            // First thread does more job
+
             start_op = n_operations * thread_number;
             end_op = (n_operations * (thread_number + 1)) + rest_operations;
           }
@@ -178,6 +178,33 @@ class Matrix
           else
               res = - matrix[0][col] * minmatr.multithreading_determ();
           return res;
+        }
+
+        void transpose_threading(Matrix<T>& result, int thread_number, int numb_of_thr) const
+        {
+          const int n_elements = (matr_rows * matr_cols);
+          const int n_operations = n_elements / numb_of_thr;
+          const int rest_operations = n_elements % numb_of_thr;
+
+          int start_op, end_op;
+
+          if (thread_number == 0) {
+
+            start_op = n_operations * thread_number;
+            end_op = (n_operations * (thread_number + 1)) + rest_operations;
+          }
+          else {
+            start_op = n_operations * thread_number + rest_operations;
+            end_op = (n_operations * (thread_number + 1)) + rest_operations;
+          }
+
+          for (int op = start_op; op < end_op; ++op)
+          {
+            const int row = op / matr_cols;
+            const int col = op % matr_cols;
+            result.matrix[row][col] = this->el(col, row);
+
+          }
         }
 
     public:
@@ -617,6 +644,30 @@ class Matrix
             {
               threads.top().join();
               threads.pop();
+            }
+            return matr_transpose;
+        }
+
+        Matrix<T> multithreading_transpose(int numb_of_thr) const
+        {
+            T** res_matr = new T* [matr_cols];
+            Matrix<T> matr_transpose(matr_cols, matr_rows, res_matr);
+
+            std::vector <std::future<void>> futures;
+
+            for (size_t i = 0; i < matr_cols; ++i)
+            {
+                matr_transpose.matrix[i] = new T [matr_rows];
+            }
+
+            for (int i = 0; i < numb_of_thr; ++i)
+            {
+              futures.emplace_back (std::async (&Matrix<T>::transpose_threading, this, std::ref(matr_transpose), i, numb_of_thr));
+            }
+
+            for (auto i = futures.begin(); i < futures.end(); ++i)
+            {
+              i->get();
             }
             return matr_transpose;
         }
