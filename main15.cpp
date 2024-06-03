@@ -13,9 +13,6 @@ int main()
   Matrix <double> m3 (3, 3);
   m3.randomise();
 
-  Matrix <int> m4 (3, 3);
-  m4.randomise();
-
 
   Matrix <double> res1 = m1.multithreading_addition (m3);
   std::cout << res1;
