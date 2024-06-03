@@ -51,7 +51,7 @@ class Matrix
             }
         }
 
-        void addition_threading(Matrix<T>& result, const int thread_number, const int numb_of_thr, const Matrix<T>& m2) const
+        void addition_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
           const int n_elements = (this->matr_rows * m2.matr_cols);
           const int n_operations = n_elements / numb_of_thr; //operations for each thread
@@ -80,7 +80,7 @@ class Matrix
           }
         }
 
-        void subtraction_threading(Matrix<T>& result, const int thread_number, const int numb_of_thr, const Matrix<T>& m2) const
+        void subtraction_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
           const int n_elements = (this->matr_rows * m2.matr_cols);
           const int n_operations = n_elements / numb_of_thr; //operations for each thread
@@ -109,7 +109,7 @@ class Matrix
           }
         }
 
-        void scalar_threading(Matrix<T>& result, const int thread_number, const int numb_of_thr,  const T right) const
+        void scalar_threading(Matrix<T>& result, int thread_number, int numb_of_thr,  T right) const
         {
           const int n_elements = (this->matr_rows * this->matr_cols);
           const int n_operations = n_elements / numb_of_thr; //operations for each thread
@@ -137,7 +137,7 @@ class Matrix
           }
         }
 
-        void multiply_threading(Matrix<T>& result, const int thread_number, const int numb_of_thr, const Matrix<T>& m2) const
+        void multiply_threading(Matrix<T>& result, int thread_number, int numb_of_thr, const Matrix<T>& m2) const
         {
           const int n_elements = (this->matr_rows * m2.matr_cols);
           const int n_operations = n_elements / numb_of_thr; //operations for each thread
@@ -166,6 +166,18 @@ class Matrix
               result.matrix[row][col] += e1 * e2;
             }
           }
+        }
+
+        T determ_threading (size_t col) const
+        {
+          Matrix<T> minmatr(*this, 0, col);
+
+          T res;
+          if ((col % 2) == 0)
+              res = matrix[0][col] * minmatr.multithreading_determ();
+          else
+              res = - matrix[0][col] * minmatr.multithreading_determ();
+          return res;
         }
 
     public:
@@ -278,9 +290,9 @@ class Matrix
             }
         }
 
-        bool operator != (const Matrix<T>& other)
+        bool operator != (const Matrix<T>& other) const
         {
-          if (this->matr_rows != other.matr_rows || this->matr_cols != other.matr_cols)
+          if (matr_rows != other.matr_rows || matr_cols != other.matr_cols)
             return true;
           else
           {
@@ -288,7 +300,7 @@ class Matrix
             {
               for (size_t j = 0; j < matr_cols; ++j)
               {
-                if (this->matrix[i][j] != other.matrix[i][j])
+                if (matrix[i][j] != other.matrix[i][j])
                   return true;
               }
             }
@@ -298,16 +310,49 @@ class Matrix
 
         Matrix<T>& operator =  (const Matrix<T>& other)
         {
-            if (this != &other)
+            if (*this != other)
             {
-                this->matr_rows = other.matr_rows;
-                this->matr_cols = other.matr_cols;
-                this->matrix = other.matrix;
+                matr_rows = other.matr_rows;
+                matr_cols = other.matr_cols;
+                matrix = other.matrix;
             }
             return *this;
         }
 
-        Matrix<T> multithreading_addition (const Matrix<T>& right, const int numb_of_thr) const
+        Matrix<T> operator + (const Matrix<T>& right) const
+        {
+            if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
+            {
+
+              std::stack <std::thread> threads;
+
+              T** res_matrix = new T* [matr_rows];
+              Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
+              for (size_t i = 0; i < matr_rows; ++i)
+              {
+                result.matrix [i] = new T [matr_cols];
+                for (size_t j = 0; j < matr_cols; ++j)
+                  threads.emplace(std::thread ([this, &result, &right, i, j](){result.matrix[i][j] = matrix[i][j] + right.matrix[i][j];}));
+
+              }
+
+              for (int i = 0; i < threads.size(); ++i)
+              {
+                threads.top().join();
+                threads.pop();
+              }
+
+
+
+              return result;
+            }
+            else
+            {
+              throw "Matrices have not equal sizes";
+            }
+        }
+
+        Matrix<T> operator -   (const Matrix<T>& right) const
         {
             if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
             {
@@ -317,25 +362,11 @@ class Matrix
                     res_matrix [i] = new T [matr_cols];
                     for (size_t j = 0; j < matr_cols; ++j)
                     {
-                        res_matrix[i][j] = 0;
+                        res_matrix[i][j] = matrix[i][j] - right.matrix[i][j];
                     }
                 }
-                Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
-
-                std::stack<std::thread> threads;
-
-                for (int i = 0; i < numb_of_thr; ++i)
-                {
-                  threads.emplace(std::thread(&Matrix<T>::addition_threading, this, std::ref(result), i, numb_of_thr, std::cref(right)));
-                }
-
-                for (int i = 0; i < numb_of_thr; ++i)
-                {
-                  threads.top().join();
-                  threads.pop();
-                }
-
-                return result;
+            Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
+            return result;
             }
             else
             {
@@ -343,43 +374,77 @@ class Matrix
             }
         }
 
-        Matrix<T> multithreading_subtraction (const Matrix<T>& right, const int numb_of_thr)const
+        Matrix<T> multithreading_addition (const Matrix<T>& right, int numb_of_thr) const
         {
-            if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
+          if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
+          {
+            T** res_matrix = new T* [matr_rows];
+            for (size_t i = 0; i < matr_rows; ++i)
             {
-                T** res_matrix = new T* [matr_rows];
-                for (size_t i = 0; i < matr_rows; ++i)
-                {
-                    res_matrix [i] = new T [matr_cols];
-                    for (size_t j = 0; j < matr_cols; ++j)
-                    {
-                        res_matrix[i][j] = 0;
-                    }
-                }
-                Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
-
-                std::stack<std::thread> threads;
-
-                for (int i = 0; i < numb_of_thr; ++i)
-                {
-                  threads.emplace(std::thread(&Matrix<T>::subtraction_threading, this, std::ref(result), i, numb_of_thr, std::cref(right)));
-                }
-
-                for (int i = 0; i < numb_of_thr; ++i)
-                {
-                  threads.top().join();
-                  threads.pop();
-                }
-
-                return result;
+              res_matrix [i] = new T [matr_cols];
+              for (size_t j = 0; j < matr_cols; ++j)
+              {
+                res_matrix[i][j] = 0;
+              }
             }
-            else
+            Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
+
+            std::vector <std::future<void>> futures;
+
+            for (int i = 0; i < numb_of_thr; ++i)
             {
-                throw "Matrices have not equal sizes";
+              futures.emplace_back(std::async(&Matrix<T>::addition_threading, this, std::ref(result), i, numb_of_thr, std::cref(right)));
             }
+
+            for (auto i = futures.begin(); i < futures.end(); ++i)
+            {
+              i->get();
+            }
+
+            return result;
+          }
+          else
+          {
+            throw "Matrices have not equal sizes";
+          }
         }
 
-        Matrix<T> multithreading_scalar (const T right, const int numb_of_thr) const
+        Matrix<T> multithreading_subtraction (const Matrix<T>& right, int numb_of_thr) const
+        {
+          if ((matr_rows == right.matr_rows) && (matr_cols == right.matr_cols))
+          {
+            T** res_matrix = new T* [matr_rows];
+            for (size_t i = 0; i < matr_rows; ++i)
+            {
+              res_matrix [i] = new T [matr_cols];
+              for (size_t j = 0; j < matr_cols; ++j)
+              {
+                res_matrix[i][j] = 0;
+              }
+            }
+            Matrix<T> result (matr_rows, right.matr_cols, res_matrix);
+
+            std::vector <std::future<void>> futures;
+
+            for (int i = 0; i < numb_of_thr; ++i)
+            {
+              futures.emplace_back(std::async(&Matrix<T>::subtraction_threading, this, std::ref(result), i, numb_of_thr, std::cref(right)));
+            }
+
+            for (auto i = futures.begin(); i < futures.end(); ++i)
+            {
+              i->get();
+            }
+
+            return result;
+          }
+          else
+          {
+            throw "Matrices have not equal sizes";
+          }
+        }
+
+        Matrix<T> multithreading_scalar (T right, int numb_of_thr) const
         {
           T** res_matrix = new T* [matr_rows];
           for (size_t i = 0; i < matr_rows; ++i)
@@ -392,49 +457,47 @@ class Matrix
           }
           Matrix<T> result (matr_rows, matr_cols, res_matrix);
 
-          std::stack<std::thread> threads;
+          std::vector <std::future<void>> futures;
 
           for (int i = 0; i < numb_of_thr; ++i)
           {
-            threads.emplace(std::thread(&Matrix<T>::scalar_threading, this, std::ref(result), i, numb_of_thr, right));
+            futures.emplace_back(std::async(&Matrix<T>::scalar_threading, this, std::ref(result), i, numb_of_thr, std::cref(right)));
+
           }
 
-          for (int i = 0; i < numb_of_thr; ++i)
+          for (auto i = futures.begin(); i < futures.end(); ++i)
           {
-            threads.top().join();
-            threads.pop();
+            i->get();
           }
 
           return result;
         }
 
-        Matrix <T> multithreading_multiplication (const Matrix<T>& m2, const int numb_of_thr) const
+        Matrix <T> multithreading_multiplication (const Matrix<T>& m2, int numb_of_thr) const
         {
-          if (this->matr_cols == m2.matr_rows)
+          if (matr_cols == m2.matr_rows)
           {
-              T** res_matrix = new T* [m2.matr_cols];
-              for (size_t i = 0; i < m2.matr_cols; ++i)
+              T** res_matrix = new T* [matr_rows];
+              for (size_t i = 0; i < matr_rows; ++i)
               {
-                  res_matrix[i] = new T [this->matr_rows];
-                  for (size_t j = 0; j < this->matr_rows; ++j)
+                  res_matrix[i] = new T [m2.matr_cols];
+                  for (size_t j = 0; j < m2.matr_cols; ++j)
                       res_matrix[i][j] = 0;
               }
-              Matrix<T> result (this->matr_rows, m2.matr_cols, res_matrix);
+              Matrix<T> result (matr_rows, m2.matr_cols, res_matrix);
 
-              std::stack<std::thread> threads;
-
-              for (int i = 0; i < numb_of_thr; ++i)
-              {
-                threads.emplace(std::thread(&Matrix<T>::multiply_threading, this, std::ref(result), i, numb_of_thr, std::cref(m2)));
-              }
+              std::vector <std::future<void>> futures;
 
               for (int i = 0; i < numb_of_thr; ++i)
               {
-                threads.top().join();
-                threads.pop();
+                futures.emplace_back(std::async(&Matrix<T>::multiply_threading, this, std::ref(result), i, numb_of_thr, std::cref(m2)));
+
               }
 
-              std::cout << result;
+              for (auto i = futures.begin(); i < futures.end(); ++i)
+              {
+                i->get();
+              }
 
               return result;
           }
@@ -442,18 +505,6 @@ class Matrix
           {
               throw "Wrong matrices' sizes";
           }
-        }
-
-        T determ_threading (const size_t col) const
-        {
-          Matrix<T> minmatr(*this, 0, col);
-
-          T res;
-          if ((col % 2) == 0)
-              res = matrix[0][col] * minmatr.multithreading_determ();
-          else
-              res = - matrix[0][col] * minmatr.multithreading_determ();
-          return res;
         }
 
         T multithreading_determ () const
