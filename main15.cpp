@@ -7,6 +7,7 @@ int main()
 {
   Matrix <double> m1 (3, 3);
   m1.randomise();
+  std::cout << m1;
 
   Matrix <double> m2 (3, 4);
   m2. randomise();
@@ -46,6 +47,9 @@ int main()
 
   Matrix <double> res10 = m1.multithreading_transpose(2);
   std::cout << res10;
+
+  Matrix <double> res11 = m1.multithreading_reverse();
+  std::cout << res11;
 
   return 0;
 }

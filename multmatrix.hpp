@@ -1,5 +1,5 @@
 #ifndef Multmatrix_HPP
-#define Multmatrix1_HPP
+#define Multmatrix_HPP
 
 #include <iostream>
 #include <fstream>
@@ -8,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <future>
+#include <type_traits>
 
 template <typename T>
 class Matrix
@@ -670,6 +671,103 @@ class Matrix
               i->get();
             }
             return matr_transpose;
+        }
+
+        //template <typename U>
+        Matrix<T> multithreading_reverse ()
+        {
+          T det = this-> multithreading_determ();
+
+          if (det != 0)
+          {
+            Matrix <T> res = this->multithreading_reverse (det, std::is_integral<T>());
+            return res;
+          }
+          else
+          {
+              throw ("The determinant is zero");
+          }
+        }
+
+        Matrix<long double> multithreading_reverse (T deter, std::true_type)
+        {
+          long double det = static_cast<long double> (deter);
+          long double** res_matr = new long double* [matr_rows];
+
+          Matrix<long double> A_matr (matr_rows, matr_cols, res_matr);
+
+          std::stack <std::thread> threads;
+
+          for (size_t i = 0; i < matr_rows; ++i)
+          {
+            A_matr.matrix[i] = new long double [matr_cols];
+            for (size_t j = 0; j < matr_cols; ++j)
+            {
+              threads.emplace (std::thread([this, &A_matr, i, j](){
+                Matrix<T> minmatr(*this, i, j);
+                long double mindet = static_cast<long double>(minmatr.multithreading_determ());
+                if (((i + j) % 2) == 0)
+                    A_matr.matrix[i][j] = mindet;
+                else
+                    A_matr.matrix[i][j] = -1*mindet;
+              }));
+
+            }
+          }
+
+          for (int i = 0; i < matr_rows*matr_cols; ++i)
+          {
+            threads.top().join();
+            threads.pop();
+          }
+
+          Matrix<long double> A_matr_transp = A_matr.multithreading_transpose();
+
+          long double det1 = 1 / det;
+
+          Matrix<long double> res = A_matr_transp.multithreading_scalar(det1);
+
+          return res;
+        }
+
+        Matrix<T> multithreading_reverse (T det, std::false_type)
+        {
+          T** res_matr = new T* [matr_rows];
+
+          Matrix<T> A_matr (matr_rows, matr_cols, res_matr);
+
+          std::stack <std::thread> threads;
+
+          for (size_t i = 0; i < matr_rows; ++i)
+          {
+            A_matr.matrix[i] = new T [matr_cols];
+            for (size_t j = 0; j < matr_cols; ++j)
+            {
+              threads.emplace (std::thread([this, &A_matr, i, j](){
+                Matrix<T> minmatr(*this, i, j);
+                T mindet = minmatr.multithreading_determ();
+                if (((i + j) % 2) == 0)
+                    A_matr.matrix[i][j] = mindet;
+                else
+                    A_matr.matrix[i][j] = -1*mindet;
+              }));
+
+            }
+          }
+
+          for (int i = 0; i < matr_rows*matr_cols; ++i)
+          {
+            threads.top().join();
+            threads.pop();
+          }
+
+          Matrix<T> A_matr_transp = A_matr.multithreading_transpose();
+
+          T det1 = 1 / det;
+
+          Matrix<T> res = A_matr_transp.multithreading_scalar(det1);
+
+          return res;
         }
 
 
